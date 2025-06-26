@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dynamic AI SQL Assistant</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+    
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      backdrop-filter: blur(10px);
+    }
+    
+    .connection-status {
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: 500;
+    }
+    
+    .status-disconnected {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+    
+    .status-connected {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .input-group {
+      margin-bottom: 15px;
+    }
+    
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #555;
+    }
+    
+    input, button {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e1e8ed;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .button-group button {
+      flex: 1;
+    }
+    
+    .refresh-btn {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    }
+    
+    .refresh-btn:hover {
+      box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4) !important;
+    }
+    
+    .query-input {
+      position: relative;
+    }
+    
+    .query-input input {
+      font-size: 16px;
+      padding: 15px 20px;
+      border-radius: 25px;
+      border: 2px solid #667eea;
+    }
+    
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .suggestion-chip {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 20px;
+      padding: 8px 15px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .suggestion-chip:hover {
+      background: #667eea;
+      color: white;
+    }
+    
+    .result-container {
+      max-height: 500px;
+      overflow-y: auto;
+      border: 1px solid #e1e8ed;
+      border-radius: 8px;
+      background: #f8f9fa;
+    }
+    
+    .result-header {
+      background: #667eea;
+      color: white;
+      padding: 15px;
+      font-weight: 500;
+      border-radius: 8px 8px 0 0;
+    }
+    
+    .result-content {
+      padding: 20px;
+    }
+    
+    .sql-query {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      margin-bottom: 15px;
+      overflow-x: auto;
+    }
+    
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    
+    .result-table th,
+    .result-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e1e8ed;
+    }
+    
+    .result-table th {
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #495057;
+    }
+    
+    .result-table tr:hover {
+      background: #f8f9fa;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .db-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .db-stats {
+      display: flex;
+      gap: 20px;
+    }
+    
+    .stat {
+      text-align: center;
+    }
+    
+    .stat-number {
+      font-size: 24px;
+      font-weight: bold;
+      color: #667eea;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🤖 Dynamic AI SQL Assistant</h1>
+      <p>Just ask in plain English - I'll understand your database and generate the perfect query!</p>
+    </div>
+
+    <!-- Connection Status -->
+    <div id="connection-status" class="connection-status status-disconnected">
+      🔌 Not connected to database
+    </div>
+
+    <!-- Database Connection -->
+    <div class="card">
+      <h2>🔐 Database Connection</h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div class="input-group">
+          <label>Host</label>
+          <input id="host" value="localhost" placeholder="localhost" />
+        </div>
+        <div class="input-group">
+          <label>Database</label>
+          <input id="dbname" value="sopranos" placeholder="database name" />
+        </div>
+        <div class="input-group">
+          <label>Username</label>
+          <input id="username" value="root" placeholder="username" />
+        </div>
+        <div class="input-group">
+          <label>Password</label>
+          <input id="password" type="password" placeholder="password" />
+        </div>
+      </div>
+      <div class="button-group">
+        <button onclick="connectDatabase()" id="connect-btn">Connect & Analyze Database</button>
+        <button onclick="refreshSchema()" id="refresh-btn" class="refresh-btn" disabled>🔄 Refresh Schema</button>
+      </div>
+    </div>
+
+    <!-- Database Info (hidden initially) -->
+    <div id="db-info" class="db-info" style="display: none;">
+      <div>
+        <strong>📊 Database Analysis Complete</strong>
+        <div id="db-name"></div>
+      </div>
+      <div class="db-stats">
+        <div class="stat">
+          <div class="stat-number" id="table-count">0</div>
+          <div class="stat-label">Tables</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number" id="record-count">0</div>
+          <div class="stat-label">Records</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Query Interface -->
+    <div class="card">
+      <h2>💬 Ask Anything About Your Data</h2>
+      <div class="query-input">
+        <input 
+          id="user-query" 
+          placeholder="e.g., 'show all crimes', 'count records by year', 'find all active members'..."
+          onkeypress="handleKeyPress(event)"
+        />
+      </div>
+      <button onclick="executeQuery()" id="query-btn" disabled>Ask AI Assistant</button>
+      
+      <!-- Query Suggestions -->
+      <div id="suggestions" class="suggestions" style="display: none;"></div>
+    </div>
+
+    <!-- Results -->
+    <div id="results" class="card" style="display: none;">
+      <div class="result-container">
+        <div class="result-header">
+          <span id="result-title">Query Results</span>
+        </div>
+        <div class="result-content" id="result-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isConnected = false;
+
+    function updateConnectionStatus(connected, info = null) {
+      const status = document.getElementById('connection-status');
+      const dbInfo = document.getElementById('db-info');
+      const queryBtn = document.getElementById('query-btn');
+      const refreshBtn = document.getElementById('refresh-btn');
+      
+      isConnected = connected;
+      
+      if (connected) {
+        status.className = 'connection-status status-connected';
+        status.innerHTML = `✅ Connected to ${info.database}`;
+        dbInfo.style.display = 'flex';
+        document.getElementById('db-name').textContent = `Tables: ${info.tables.join(', ')}`;
+        document.getElementById('table-count').textContent = info.tables_found;
+        document.getElementById('record-count').textContent = info.total_records;
+        queryBtn.disabled = false;
+        refreshBtn.disabled = false;
+        
+        // Load suggestions
+        loadSuggestions();
+      } else {
+        status.className = 'connection-status status-disconnected';
+        status.innerHTML = '🔌 Not connected to database';
+        dbInfo.style.display = 'none';
+        queryBtn.disabled = true;
+        refreshBtn.disabled = true;
+      }
+    }
+
+    async function connectDatabase() {
+      const btn = document.getElementById('connect-btn');
+      const originalText = btn.textContent;
+      
+      btn.disabled = true;
+      btn.textContent = 'Connecting & Analyzing...';
+      
+      try {
+        const creds = {
+          host: document.getElementById('host').value.trim(),
+          user: document.getElementById('username').value.trim(),
+          pass: document.getElementById('password').value,
+          db: document.getElementById('dbname').value.trim()
+        };
+
+        const response = await fetch('/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(creds)
+        });
+
+        const result = await response.json();
+        
+        if (result.error) {
+          alert(`Connection failed: ${result.error}`);
+          updateConnectionStatus(false);
+        } else {
+          updateConnectionStatus(true, result);
+        }
+      } catch (error) {
+        alert(`Connection error: ${error.message}`);
+        updateConnectionStatus(false);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+
+    async function refreshSchema() {
+      if (!isConnected) {
+        alert('Please connect to database first');
+        return;
+      }
+
+      const btn = document.getElementById('refresh-btn');
+      const originalText = btn.textContent;
+      
+      btn.disabled = true;
+      btn.textContent = '🔄 Refreshing...';
+      
+      try {
+        const response = await fetch('/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+
+        const result = await response.json();
+        
+        if (result.error) {
+          alert(`Refresh failed: ${result.error}`);
+        } else {
+          // Update the display with fresh data
+          const dbInfo = {
+            database: document.getElementById('dbname').value,
+            tables: result.tables,
+            tables_found: result.tables_found,
+            total_records: result.total_records
+          };
+          updateConnectionStatus(true, dbInfo);
+          alert('Schema refreshed successfully!');
+        }
+      } catch (error) {
+        alert(`Refresh error: ${error.message}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+
+    async function loadSuggestions() {
+      try {
+        const response = await fetch('/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+
+        const result = await response.json();
+        
+        if (result.suggestions) {
+          const container = document.getElementById('suggestions');
+          container.innerHTML = '';
+          
+          result.suggestions.forEach(suggestion => {
+            const chip = document.createElement('div');
+            chip.className = 'suggestion-chip';
+            chip.textContent = suggestion;
+            chip.onclick = () => {
+              document.getElementById('user-query').value = suggestion;
+              executeQuery();
+            };
+            container.appendChild(chip);
+          });
+          
+          container.style.display = 'flex';
+        }
+      } catch (error) {
+        console.error('Failed to load suggestions:', error);
+      }
+    }
+
+    function handleKeyPress(event) {
+      if (event.key === 'Enter') {
+        executeQuery();
+      }
+    }
+
+    async function executeQuery() {
+      if (!isConnected) {
+        alert('Please connect to database first');
+        return;
+      }
+
+      const query = document.getElementById('user-query').value.trim();
+      if (!query) {
+        alert('Please enter a query');
+        return;
+      }
+
+      const btn = document.getElementById('query-btn');
+      const originalText = btn.textContent;
+      const resultsDiv = document.getElementById('results');
+      const resultContent = document.getElementById('result-content');
+      
+      btn.disabled = true;
+      btn.textContent = 'AI is thinking...';
+      resultsDiv.style.display = 'block';
+      resultContent.innerHTML = '<div class="loading">🤖 Analyzing your query and generating SQL...</div>';
+
+      try {
+        const response = await fetch('/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query })
+        });
+
+        const result = await response.json();
+        displayResults(result, query);
+        
+      } catch (error) {
+        resultContent.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+
+    function displayResults(result, originalQuery) {
+      const resultContent = document.getElementById('result-content');
+      const resultTitle = document.getElementById('result-title');
+      
+      if (result.error) {
+        resultTitle.textContent = 'Error';
+        resultContent.innerHTML = `
+          <div class="error">
+            <strong>Error:</strong> ${result.error}
+            ${result.sql ? `<div class="sql-query">Generated SQL: ${result.sql}</div>` : ''}
+          </div>
+        `;
+        return;
+      }
+
+      resultTitle.textContent = `Results for: "${originalQuery}"`;
+      
+      let html = `
+        <div class="sql-query">${result.query}</div>
+        <div><strong>Found ${result.total_results} result(s)</strong></div>
+      `;
+
+      if (result.results && result.results.length > 0) {
+        html += '<table class="result-table"><thead><tr>';
+        
+        // Table headers
+        Object.keys(result.results[0]).forEach(key => {
+          html += `<th>${key}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        
+        // Table rows
+        result.results.forEach(row => {
+          html += '<tr>';
+          Object.values(row).forEach(value => {
+            html += `<td>${value !== null ? value : 'NULL'}</td>`;
+          });
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+      } else {
+        html += '<p>No results found.</p>';
+      }
+
+      resultContent.innerHTML = html;
+    }
+  </script>
+</body>
+</html>

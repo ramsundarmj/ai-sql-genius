@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: text-to-sql-generator
+    env: python
+    buildCommand: ""
+    startCommand: "gunicorn app:app"
+  
